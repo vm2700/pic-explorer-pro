@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 
 interface PhotoViewerProps {
   currentPhoto: string | null;
@@ -9,6 +9,23 @@ interface PhotoViewerProps {
 
 export const PhotoViewer = ({ currentPhoto, photos, currentIndex, onNavigate }: PhotoViewerProps) => {
   const imageRef = useRef<HTMLImageElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [scale, setScale] = useState(1);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [lastPanX, setLastPanX] = useState(0);
+  const [lastPanY, setLastPanY] = useState(0);
+
+  // Reset zoom and pan when photo changes
+  useEffect(() => {
+    setScale(1);
+    setPanX(0);
+    setPanY(0);
+    setLastPanX(0);
+    setLastPanY(0);
+  }, [currentPhoto]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -25,6 +42,68 @@ export const PhotoViewer = ({ currentPhoto, photos, currentIndex, onNavigate }: 
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [currentIndex, photos.length, onNavigate]);
 
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const scaleChange = e.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = Math.max(0.1, Math.min(10, scale * scaleChange));
+    setScale(newScale);
+  }, [scale]);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (scale > 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.clientX - panX, y: e.clientY - panY });
+    }
+  }, [scale, panX, panY]);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (isDragging && scale > 1) {
+      const newPanX = e.clientX - dragStart.x;
+      const newPanY = e.clientY - dragStart.y;
+      setPanX(newPanX);
+      setPanY(newPanY);
+    }
+  }, [isDragging, scale, dragStart]);
+
+  const handleMouseUp = useCallback(() => {
+    setIsDragging(false);
+    setLastPanX(panX);
+    setLastPanY(panY);
+  }, [panX, panY]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1 && scale > 1) {
+      setIsDragging(true);
+      setDragStart({ 
+        x: e.touches[0].clientX - panX, 
+        y: e.touches[0].clientY - panY 
+      });
+    }
+  }, [scale, panX, panY]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 1 && isDragging && scale > 1) {
+      e.preventDefault();
+      const newPanX = e.touches[0].clientX - dragStart.x;
+      const newPanY = e.touches[0].clientY - dragStart.y;
+      setPanX(newPanX);
+      setPanY(newPanY);
+    }
+  }, [isDragging, scale, dragStart]);
+
+  const handleTouchEnd = useCallback(() => {
+    setIsDragging(false);
+    setLastPanX(panX);
+    setLastPanY(panY);
+  }, [panX, panY]);
+
+  const getCursorStyle = () => {
+    if (scale > 1) {
+      return isDragging ? 'cursor-grabbing' : 'cursor-grab';
+    }
+    return 'cursor-zoom-in';
+  };
+
   if (!currentPhoto) {
     return (
       <div className="flex-1 bg-photo-bg flex items-center justify-center">
@@ -40,21 +119,35 @@ export const PhotoViewer = ({ currentPhoto, photos, currentIndex, onNavigate }: 
   }
 
   return (
-    <div className="flex-1 bg-photo-bg flex items-center justify-center p-4 relative overflow-hidden">
+    <div 
+      ref={containerRef}
+      className="flex-1 bg-photo-bg flex items-center justify-center p-4 relative overflow-hidden"
+      onWheel={handleWheel}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={handleMouseUp}
+      onMouseLeave={handleMouseUp}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+    >
       <img
         ref={imageRef}
         src={currentPhoto}
         alt="Photo preview"
-        className="max-w-full max-h-full object-contain cursor-zoom-in hover:cursor-zoom-out transition-transform duration-200"
+        className={`max-w-full max-h-full object-contain transition-transform select-none ${getCursorStyle()}`}
         style={{ 
           imageRendering: "auto" as const,
           WebkitUserSelect: "none",
-          userSelect: "none"
+          userSelect: "none",
+          transform: `scale(${scale}) translate(${panX}px, ${panY}px)`,
+          transformOrigin: 'center center'
         }}
         onError={(e) => {
           const target = e.target as HTMLImageElement;
           target.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjMzMzIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkVycm9yIGxvYWRpbmcgaW1hZ2U8L3RleHQ+PC9zdmc+";
         }}
+        onDragStart={(e) => e.preventDefault()}
       />
       
       {/* Navigation indicators */}
