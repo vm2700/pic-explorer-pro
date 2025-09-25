@@ -47,6 +47,12 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Photo app specific colors
+        'sidebar-bg': "hsl(var(--sidebar-bg))",
+        'thumbnail-bg': "hsl(var(--thumbnail-bg))",
+        'thumbnail-hover': "hsl(var(--thumbnail-hover))",
+        'nav-bg': "hsl(var(--nav-bg))",
+        'photo-bg': "hsl(var(--photo-bg))",
         sidebar: {
           DEFAULT: "hsl(var(--sidebar-background))",
           foreground: "hsl(var(--sidebar-foreground))",
