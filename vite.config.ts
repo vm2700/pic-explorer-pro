@@ -5,7 +5,7 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  base: 'https://vm2700.github.io/pic-explorer-pro/',
+  base: '/pic-explorer-pro/',
   server: {
     host: "::",
     port: 8080,
