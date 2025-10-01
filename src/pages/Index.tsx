@@ -7,6 +7,7 @@ import { toast } from "sonner";
 const Index = () => {
   const [photos, setPhotos] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleFolderSelect = useCallback((files: FileList) => {
     const imageFiles = Array.from(files).filter(file => 
@@ -23,19 +24,63 @@ const Index = () => {
     setCurrentIndex(0);
   }, []);
 
-  const handleUrlLoad = useCallback((url: string) => {
-    // Validate if it's likely an image URL
-    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
-    const isImageUrl = imageExtensions.some(ext => 
-      url.toLowerCase().includes(ext)
-    ) || url.includes('image') || url.includes('photo');
+  const handleUrlLoad = useCallback(async (url: string) => {
+    setIsLoading(true);
+    
+    try {
+      // Check if it's a direct image URL
+      const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.svg'];
+      const isDirectImage = imageExtensions.some(ext => url.toLowerCase().endsWith(ext));
+      
+      if (isDirectImage) {
+        setPhotos([url]);
+        setCurrentIndex(0);
+        setIsLoading(false);
+        return;
+      }
 
-    if (!isImageUrl) {
-      toast.warning("URL doesn't appear to be an image. Loading anyway...");
+      // Try to fetch and parse the directory URL for image links
+      toast.info("Fetching directory contents...");
+      const response = await fetch(url);
+      const html = await response.text();
+      
+      // Extract image URLs from HTML
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const links = Array.from(doc.querySelectorAll('a[href]'));
+      
+      const imageUrls = links
+        .map(link => {
+          const href = link.getAttribute('href');
+          if (!href) return null;
+          
+          // Convert relative URLs to absolute
+          const absoluteUrl = new URL(href, url).href;
+          
+          // Check if it's an image
+          return imageExtensions.some(ext => absoluteUrl.toLowerCase().endsWith(ext)) 
+            ? absoluteUrl 
+            : null;
+        })
+        .filter((url): url is string => url !== null);
+
+      if (imageUrls.length === 0) {
+        toast.error("No images found in the directory");
+        setPhotos([url]); // Fallback to loading the URL as a single image
+      } else {
+        setPhotos(imageUrls);
+        toast.success(`Found ${imageUrls.length} images`);
+      }
+      
+      setCurrentIndex(0);
+    } catch (error) {
+      console.error('Error loading URL:', error);
+      toast.error("Failed to load directory. Trying as single image...");
+      setPhotos([url]);
+      setCurrentIndex(0);
+    } finally {
+      setIsLoading(false);
     }
-
-    setPhotos([url]);
-    setCurrentIndex(0);
   }, []);
 
   const handlePhotoSelect = useCallback((index: number) => {
@@ -67,6 +112,7 @@ const Index = () => {
           photos={photos}
           currentIndex={currentIndex}
           onNavigate={handleNavigate}
+          isLoading={isLoading}
         />
       </div>
     </div>

@@ -5,9 +5,10 @@ interface PhotoViewerProps {
   photos: string[];
   currentIndex: number;
   onNavigate: (index: number) => void;
+  isLoading?: boolean;
 }
 
-export const PhotoViewer = ({ currentPhoto, photos, currentIndex, onNavigate }: PhotoViewerProps) => {
+export const PhotoViewer = ({ currentPhoto, photos, currentIndex, onNavigate, isLoading }: PhotoViewerProps) => {
   const imageRef = useRef<HTMLImageElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
@@ -103,6 +104,20 @@ export const PhotoViewer = ({ currentPhoto, photos, currentIndex, onNavigate }: 
     }
     return 'cursor-zoom-in';
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex-1 bg-photo-bg flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4 text-muted-foreground animate-pulse">⏳</div>
+          <p className="text-muted-foreground text-lg font-medium">Loading...</p>
+          <p className="text-muted-foreground text-sm mt-2">
+            Fetching directory contents
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentPhoto) {
     return (
