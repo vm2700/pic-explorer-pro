@@ -76,7 +76,7 @@ export const TopNavigation = ({ onFolderSelect, onUrlLoad }: TopNavigationProps)
         <form onSubmit={handleUrlSubmit} className="flex gap-2 flex-1">
           <Input
             type="url"
-            placeholder="Enter image URL..."
+            placeholder="Enter URL..."
             value={urlInput}
             onChange={(e) => setUrlInput(e.target.value)}
             className="flex-1"
